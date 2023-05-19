@@ -1,3 +1,5 @@
+import math
+
 import requests
 from requests.auth import HTTPBasicAuth
 import pandas as pd
@@ -131,3 +133,64 @@ def SaisonsProWettbewerb(lines, path):
     path.mkdir(parents=True, exist_ok=True)
 
     SaisonsProWettbewerb_df.to_csv(path / file, index=False)
+
+def SpielplanProSaison(lines, path):
+
+    saisons = pd.read_csv(str(path) + "\Stammdaten\SaisonsProWettbewerb.csv")
+    competitions = pd.read_csv(str(path) + "\Stammdaten\Wettbewerbsliste.csv")
+
+    path = path / "Results"
+
+    # print(competitions.to_string())
+
+    for i in saisons['id'].unique():
+
+        baseUrl = lines[0] + "/matches-by-season/se" + str(i) + "/"
+        # print(baseUrl)
+        # print(i)
+        # print(saisons[(saisons.id == i)]["competition_id"].iloc[0])
+        wettbewerb=saisons[(saisons.id == i)]["competition_id"].iloc[0]
+        # print(competitions[(competitions.id == wettbewerb)]["name"].iloc[0])
+        saisonsName=saisons[(saisons.id == i)]["name"].iloc[0]
+        wettbewerbname=competitions[(competitions.id == wettbewerb)]["name"].iloc[0]
+        # print(competitions[(competitions.id == wettbewerb)]["country.name"].iloc[0])
+        landTMP=competitions[(competitions.id == wettbewerb)]["country.name"].iloc[0]
+        if math.isnan(landTMP):
+            land=""
+        else:
+            land = str(competitions[(competitions.id == wettbewerb)]["country.name"].iloc[0]) + "_"
+
+        file = land + wettbewerbname + "_" + saisonsName + ".csv"
+
+        # print(file)
+
+
+
+        response = requests.get(
+            baseUrl,
+            auth=HTTPBasicAuth(lines[1], lines[2])
+        )
+        data = response.json()
+
+        # print(response.status_code)
+
+        # print(type(data))
+        print(data)
+        print(pd.json_normalize(data[0]["competition"][0]["season"][0]["round"][0]["match"]))
+        print(pd.json_normalize(data[0]["competition"][0]["season"][0]["round"]).to_string())
+        # print(pd.json_normalize(data[0]["competition"][0]["season"][0]).to_string())
+        # print(pd.json_normalize(data,record_path=['competition']).to_string())
+        # print(pd.json_normalize(data, record_path=['competition']).to_string())
+        exit()
+        df = pd.json_normalize(data[0]["competition"][0]["season"][0]["round"])
+
+        # df = pd.json_normalize(data[0]["competition"][0]["season"][0]["round"])
+        df["competition_id"]=str(i)
+        print(df)
+        df.reset_index(drop=True)
+
+        exit()
+
+        path.mkdir(parents=True, exist_ok=True)
+
+        SaisonsProWettbewerb_df.to_csv(path / file, index=False)

@@ -13,4 +13,5 @@ debug = False
 # Funktionen.Wettbewerbsliste(lines,path)
 # Funktionen.Länderliste(lines,path)
 # Funktionen.Eventtypen(lines,path)
-Funktionen.SaisonsProWettbewerb(lines,path)
+# Funktionen.SaisonsProWettbewerb(lines,path)
+Funktionen.SpielplanProSaison(lines,path)
