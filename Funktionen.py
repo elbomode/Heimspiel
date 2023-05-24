@@ -4,6 +4,8 @@ import requests
 from requests.auth import HTTPBasicAuth
 import pandas as pd
 from pathlib import Path
+import pickle
+
 
 
 def Altersklassen(lines,path):
@@ -176,8 +178,32 @@ def SpielplanProSaison(lines, path):
 
         # print(type(data))
         print(data)
-        print(pd.json_normalize(data[0]["competition"][0]["season"][0]["round"][0]["match"]))
-        print(pd.json_normalize(data[0]["competition"][0]["season"][0]["round"]).to_string())
+
+        with open("blub.pkl","wb") as f:
+            pickle.dump(data,f)
+
+        # rounds = pd.json_normalize(data[0]["competition"][0]["season"], record_path=['round'])
+        # matches = pd.json_normalize(data[0]["competition"][0]["season"][0]["round"],record_path=['match'], meta=['id','name','current_matchday','round_order'],meta_prefix="season.")
+        # results = pd.json_normalize(data[0]["competition"][0]["season"][0]["round"][0]["match"],record_path=['match_result'], meta=['id'],meta_prefix="match.")
+        #
+        # print(pd.json_normalize(data[0]["competition"][0]["season"]).to_string())
+        # print(pd.json_normalize(data[0]["competition"][0]["season"][0]))
+        # print(rounds)
+        # print(rounds.to_string())
+        # print(matches)
+        # print(matches.to_string())
+        # matches.to_csv("Test.csv")
+        # results.to_csv("results.csv")
+
+
+
+        # pd.json_normalize(data[0]["competition"][0]["season"][0]["round"], record_path=['match'], meta=['name']).to_csv("Test.csv", index=False)
+
+        # print(pd.json_normalize(data[0]["competition"][0]["season"][0]["round"]).to_string())
+        # print(pd.json_normalize(data[0]["competition"][0]["season"][0]["round"]).explode("match"))
+        # print(pd.json_normalize(pd.json_normalize(data[0]["competition"][0]["season"][0]["round"]).explode("match")))
+
+
         # print(pd.json_normalize(data[0]["competition"][0]["season"][0]).to_string())
         # print(pd.json_normalize(data,record_path=['competition']).to_string())
         # print(pd.json_normalize(data, record_path=['competition']).to_string())
