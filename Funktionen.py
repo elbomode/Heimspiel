@@ -1,12 +1,46 @@
-import math
-
 import requests
 from requests.auth import HTTPBasicAuth
 import pandas as pd
-from pathlib import Path
-import pickle
+import glob
 
+def ResolveListwithindf(spaltennamen,dataframe):
+    dataframe[spaltennamen+"tmp"] = dataframe[spaltennamen].copy()
+    map_blub = dataframe.iloc[0][spaltennamen+"tmp"].keys()
+    for blub in map_blub:
+        dataframe[blub] = [x[blub] for x in dataframe[spaltennamen+"tmp"]]
+    dataframe.drop(spaltennamen+"tmp", axis=1, inplace=True)
+    return dataframe
 
+def ExplodeResolveListwithindf(spaltennamen,dataframe):
+    dataframe = dataframe.explode(spaltennamen)
+    dataframe[spaltennamen+"tmp"] = dataframe[spaltennamen].copy()
+    map_blub = dataframe.iloc[0][spaltennamen+"tmp"].keys()
+    for blub in map_blub:
+        dataframe[blub] = [x[blub] for x in dataframe[spaltennamen+"tmp"]]
+    dataframe.drop(spaltennamen+"tmp", axis=1, inplace=True)
+    return dataframe
+
+def bestandAusSpalte(path,spalte):
+    blub = []
+
+    for f in glob.glob(path):
+        df = pd.read_csv(f, nrows=1)
+        blub.append(df[spalte].iloc[0])
+
+    return blub
+
+def csvColumnToList(path,spalte):
+    blub = pd.read_csv(path)
+    return blub[spalte].values.tolist()
+
+def diff(list1, list2):
+    c = set(list1).union(set(list2))  # or c = set(list1) | set(list2)
+    d = set(list1).intersection(set(list2))  # or d = set(list1) & set(list2)
+    return list(c - d)
+
+##############
+# Einzelne Api-Methoden ab hier
+##############
 
 def Altersklassen(lines,path):
     baseUrl = lines[0] + "/age-list/"
@@ -140,24 +174,32 @@ def SpielplanProSaison(lines, path):
 
     saisons = pd.read_csv(str(path) + "\Stammdaten\SaisonsProWettbewerb.csv")
     competitions = pd.read_csv(str(path) + "\Stammdaten\Wettbewerbsliste.csv")
+    vorhanden = csvColumnToList(str(path) + "\Stammdaten\SaisonsProWettbewerb.csv", "id")
+    bestand = bestandAusSpalte(str(path) + "\Results\*.csv", "seasonID")
+
+    zuLaden = diff(vorhanden, bestand)
 
     path = path / "Results"
 
     # print(competitions.to_string())
 
-    for i in saisons['id'].unique():
+    for i in zuLaden:
+
+        print(i)
+
+        if i == 23468:
+            print("Kaputte Saison")
+            continue
 
         baseUrl = lines[0] + "/matches-by-season/se" + str(i) + "/"
-        # print(baseUrl)
-        # print(i)
-        # print(saisons[(saisons.id == i)]["competition_id"].iloc[0])
+        # baseUrl = lines[0] + "/matches-by-season/se" + "23468" + "/"
+        # baseUrl = lines[0] + "/matches-by-season/se" + "42529" + "/"
         wettbewerb=saisons[(saisons.id == i)]["competition_id"].iloc[0]
-        # print(competitions[(competitions.id == wettbewerb)]["name"].iloc[0])
-        saisonsName=saisons[(saisons.id == i)]["name"].iloc[0]
-        wettbewerbname=competitions[(competitions.id == wettbewerb)]["name"].iloc[0]
-        # print(competitions[(competitions.id == wettbewerb)]["country.name"].iloc[0])
+        saisonsName_tmp=(saisons[(saisons.id == i)]["name"].iloc[0])
+        saisonsName = saisonsName_tmp.replace("\\","_").replace("/","_")
+        wettbewerbname=competitions[(competitions.id == wettbewerb)]["name"].iloc[0].replace("\\","_").replace("/","_")
         landTMP=competitions[(competitions.id == wettbewerb)]["country.name"].iloc[0]
-        if math.isnan(landTMP):
+        if str(landTMP)=="nan":
             land=""
         else:
             land = str(competitions[(competitions.id == wettbewerb)]["country.name"].iloc[0]) + "_"
@@ -174,49 +216,32 @@ def SpielplanProSaison(lines, path):
         )
         data = response.json()
 
-        # print(response.status_code)
+        print(response.status_code)
+
+        # Checken ob das Dictionary leer ist
+        if len(data) == 0:
+            print("Saison ist leer")
+            continue
 
         # print(type(data))
-        print(data)
+        # print(data)
 
-        with open("blub.pkl","wb") as f:
-            pickle.dump(data,f)
+        # with open("blub.pkl","wb") as f:
+        #     pickle.dump(data,f)
 
-        # rounds = pd.json_normalize(data[0]["competition"][0]["season"], record_path=['round'])
-        # matches = pd.json_normalize(data[0]["competition"][0]["season"][0]["round"],record_path=['match'], meta=['id','name','current_matchday','round_order'],meta_prefix="season.")
-        # results = pd.json_normalize(data[0]["competition"][0]["season"][0]["round"][0]["match"],record_path=['match_result'], meta=['id'],meta_prefix="match.")
-        #
-        # print(pd.json_normalize(data[0]["competition"][0]["season"]).to_string())
-        # print(pd.json_normalize(data[0]["competition"][0]["season"][0]))
-        # print(rounds)
-        # print(rounds.to_string())
-        # print(matches)
-        # print(matches.to_string())
-        # matches.to_csv("Test.csv")
-        # results.to_csv("results.csv")
+        df = pd.json_normalize(data[0]["competition"][0]["season"][0]["round"], record_path=['match'],meta=['id', 'name', 'current_matchday', 'round_order'], meta_prefix="round.")
+        print(df.iloc[0])
+        df2 = ExplodeResolveListwithindf("match_result", df)
 
+        df2["seasonID"] = i
 
-
-        # pd.json_normalize(data[0]["competition"][0]["season"][0]["round"], record_path=['match'], meta=['name']).to_csv("Test.csv", index=False)
-
-        # print(pd.json_normalize(data[0]["competition"][0]["season"][0]["round"]).to_string())
-        # print(pd.json_normalize(data[0]["competition"][0]["season"][0]["round"]).explode("match"))
-        # print(pd.json_normalize(pd.json_normalize(data[0]["competition"][0]["season"][0]["round"]).explode("match")))
-
-
-        # print(pd.json_normalize(data[0]["competition"][0]["season"][0]).to_string())
-        # print(pd.json_normalize(data,record_path=['competition']).to_string())
-        # print(pd.json_normalize(data, record_path=['competition']).to_string())
-        exit()
-        df = pd.json_normalize(data[0]["competition"][0]["season"][0]["round"])
-
-        # df = pd.json_normalize(data[0]["competition"][0]["season"][0]["round"])
-        df["competition_id"]=str(i)
-        print(df)
-        df.reset_index(drop=True)
-
-        exit()
+        df2.reset_index(drop=True)
 
         path.mkdir(parents=True, exist_ok=True)
 
-        SaisonsProWettbewerb_df.to_csv(path / file, index=False)
+        # print(path)
+        # print(file)
+
+        df2.to_csv(path / file, index=False)
+
+        
